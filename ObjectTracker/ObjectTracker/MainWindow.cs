@@ -7,10 +7,11 @@ using System.IO;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
+using System.Runtime.InteropServices;
 
 namespace ObjectTracker
 {
-	public class MainWindow : GameWindow
+	public unsafe class MainWindow : GameWindow
 	{
 		//set these two variables in OnUpdateFrame
 		private Quaternion rotation = Quaternion.Identity;
@@ -27,6 +28,8 @@ namespace ObjectTracker
 		List<Vector3> acceleration = new List<Vector3>();
 		List<Vector3> gyro = new List<Vector3>();
 		int index;
+
+		Data d;
 
 		private static readonly byte[] boxInds =
 		{
@@ -133,13 +136,26 @@ namespace ObjectTracker
 			Console.WriteLine(gyro.Min(v => v.X));
 			Console.WriteLine(gyro.Max(v => v.X));
 
+
+			RawHidDevice.rawhid_open(1, 0x16C0, 0x0486, 0xFFAB, 0x0200);
 		}
 
 		protected override void OnUpdateFrame(FrameEventArgs e)
 		{
 			base.OnUpdateFrame(e);
 
-			Vector3 gyroData = gyro[index];
+			int result = 0;
+			fixed (Data* dp = &d)
+			{
+				result = RawHidDevice.rawhid_recv(0, dp, 64, 0);
+			}
+
+			const float deg2rad = MathHelper.Pi / 180f;
+			Vector3 gyroData;
+			gyroData.X = d.rx / 16.384f * deg2rad;
+			gyroData.Y = d.ry / 16.384f * deg2rad;
+			gyroData.Z = d.rz / 16.384f * deg2rad;
+
 			float ang = gyroData.Length * dt;
 			Vector3 axis = Vector3.Normalize(gyroData);
 
@@ -212,6 +228,35 @@ namespace ObjectTracker
 			GL.LoadMatrix(ref persp);
 			GL.MatrixMode(MatrixMode.Modelview);
 			GL.LoadIdentity();
+		}
+
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		public struct Data
+		{
+			public byte ab;
+			public byte cd;
+			public short ax;
+			public short ay;
+			public short az;
+			public short mx;
+			public short my;
+			public short mz;
+			public short rx;
+			public short ry;
+			public short rz;
+			public long p0, p1, p2, p3, p4;
+			public short p5;
+			public short packetCount;
+
+			public string ToCsv()
+			{
+				return ax + ", " + ay + ", " + az + ", " + mx + ", " + my + ", " + mz + ", " + rx + ", " + ry + ", " + rz + ", " + packetCount;
+			}
+
+			public override string ToString()
+			{
+				return "#" + packetCount + " " + ab.ToString("X2") + ":" + cd.ToString("X2") + " : (" + ax + ", " + ay + ", " + az + ") : (" + mx + ", " + my + ", " + mz + ") : (" + rx + ", " + ry + ", " + rz + ")";
+			}
 		}
 	}
 }
