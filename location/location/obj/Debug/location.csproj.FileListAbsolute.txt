@@ -1,0 +1,6 @@
+C:\Users\olingj\Documents\VR Gun\location\location\bin\Debug\location.exe.config
+C:\Users\olingj\Documents\VR Gun\location\location\obj\Debug\location.csprojResolveAssemblyReference.cache
+C:\Users\olingj\Documents\VR Gun\location\location\bin\Debug\location.exe
+C:\Users\olingj\Documents\VR Gun\location\location\bin\Debug\location.pdb
+C:\Users\olingj\Documents\VR Gun\location\location\obj\Debug\location.exe
+C:\Users\olingj\Documents\VR Gun\location\location\obj\Debug\location.pdb
