@@ -27,8 +27,9 @@ namespace ObjectTracker
 
 		List<Vector3> acceleration = new List<Vector3>();
 		List<Vector3> gyro = new List<Vector3>();
+        List<Vector3> mag = new List<Vector3>();
 		int index;
-
+        int offIndex;
 		Data d;
 
 		private static readonly byte[] boxInds =
@@ -125,6 +126,10 @@ namespace ObjectTracker
 				tmp.Y = float.Parse(data[i][1]) / 32768f;
 				tmp.Z = float.Parse(data[i][2]) / 32768f;
 				acceleration.Add(tmp);
+                tmp.X = float.Parse(data[i][3]) / 32768f;
+                tmp.Y = float.Parse(data[i][4]) / 32768f;
+                tmp.Z = float.Parse(data[i][5]) / 32768f;
+                mag.Add(tmp);
 				tmp.X = float.Parse(data[i][6]) / 16.384f * deg2rad;
 				tmp.Y = float.Parse(data[i][7]) / 16.384f * deg2rad;
 				tmp.Z = float.Parse(data[i][8]) / 16.384f * deg2rad;
@@ -135,7 +140,8 @@ namespace ObjectTracker
 			Console.WriteLine(acceleration.Max(v => v.X));
 			Console.WriteLine(gyro.Min(v => v.X));
 			Console.WriteLine(gyro.Max(v => v.X));
-
+            Console.WriteLine(mag.Min(v => v.X));
+            Console.WriteLine(mag.Max(v => v.X));
 
 			RawHidDevice.rawhid_open(1, 0x16C0, 0x0486, 0xFFAB, 0x0200);
 		}
@@ -151,16 +157,23 @@ namespace ObjectTracker
 			}
 
 			const float deg2rad = MathHelper.Pi / 180f;
-			Vector3 gyroData;
-			gyroData.X = d.rx / 16.384f * deg2rad;
-			gyroData.Y = d.ry / 16.384f * deg2rad;
-			gyroData.Z = d.rz / 16.384f * deg2rad;
+            Vector3 gyroData;
+            gyroData.X = d.rx / 14.375f * deg2rad + 17f;
+            gyroData.Y = d.ry / 14.375f * deg2rad + 17.5f;
+            gyroData.Z = d.rz / 14.375f * deg2rad - 0.3108204f;
+           // gyroData.X = d.rx / 14.375f * deg2rad + 13.61727f;
+           // gyroData.Y = d.ry / 14.375f * deg2rad + 13.88998f;
+            //gyroData.Z = d.rz / 14.375f * deg2rad - 0.3108204f;
 
 			float ang = gyroData.Length * dt;
 			Vector3 axis = Vector3.Normalize(gyroData);
 
 			rotation *= Quaternion.FromAxisAngle(axis, ang);
 
+            /*Console.WriteLine("gyro x: " + gyroData.X);
+            Console.WriteLine("gyro y: " + gyroData.Y);
+            Console.WriteLine("gyro z: " + gyroData.Z);
+            Console.WriteLine("");*/
 
 			index++;
 			//temporary motion. replace this
