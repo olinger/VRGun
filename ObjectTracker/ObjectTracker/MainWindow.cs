@@ -31,7 +31,7 @@ namespace ObjectTracker
 		int index;
         int offIndex;
 		Data d;
-
+        Vector3 gyroOff;
 		private static readonly byte[] boxInds =
 		{
 			0,  2,  1,  0,  3,  2,  //-Z
@@ -143,8 +143,28 @@ namespace ObjectTracker
             Console.WriteLine(mag.Min(v => v.X));
             Console.WriteLine(mag.Max(v => v.X));
 
-			RawHidDevice.rawhid_open(1, 0x16C0, 0x0486, 0xFFAB, 0x0200);
+            RawHidDevice.rawhid_open(1, 0x16C0, 0x0486, 0xFFAB, 0x0200);
+            int result = 0;
+            gyroOff=Vector3.Zero;
+            fixed (Data* dp = &d)
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    result = RawHidDevice.rawhid_recv(0, dp, 64, 1);
+                    gyroOff.X += dp->rx / 14.375f * deg2rad;
+                    gyroOff.Y += dp->ry / 14.375f * deg2rad;
+                    gyroOff.Z += dp->rz / 14.375f * deg2rad;
+                }
+                
+                
+                gyroOff.X = gyroOff.X / 100f;
+                gyroOff.Y = gyroOff.Y / 100f;
+                gyroOff.Z = gyroOff.Z / 100f;
+
+                printData("gyro off", gyroOff);
+            }
 		}
+
 
 		protected override void OnUpdateFrame(FrameEventArgs e)
 		{
@@ -153,16 +173,21 @@ namespace ObjectTracker
 			int result = 0;
 			fixed (Data* dp = &d)
 			{
-				result = RawHidDevice.rawhid_recv(0, dp, 64, 0);
+				result = RawHidDevice.rawhid_recv(0, dp, 64, 2);
 			}
+
+            if (result <= 0)
+                Console.WriteLine("ERROR");
 
 			const float deg2rad = MathHelper.Pi / 180f;
 
             //gyro data
             Vector3 gyroData;
-            gyroData.X = d.rx / 14.375f * deg2rad + 17f;
-            gyroData.Y = d.ry / 14.375f * deg2rad + 17.5f;
-            gyroData.Z = d.rz / 14.375f * deg2rad - 0.3108204f;
+            gyroData.X = d.rx / 14.375f * deg2rad;
+            gyroData.Y = d.ry / 14.375f * deg2rad;
+            gyroData.Z = d.rz / 14.375f * deg2rad;
+
+            gyroData -= gyroOff;
 
             //accelerometer data
             Vector3 accelData;
@@ -179,13 +204,17 @@ namespace ObjectTracker
 			float ang = gyroData.Length * dt;
 			Vector3 axis = Vector3.Normalize(gyroData);
 
-			rotation *= Quaternion.FromAxisAngle(axis, ang);
+            if (ang > 0)
+			    rotation *= Quaternion.FromAxisAngle(axis, ang);
+
+            //if (index % 500 == 0)
+                rotation = Quaternion.Normalize(rotation);
 
             //print function for debugging, prints label and x y z of vector
-            printData("gyro", gyroData);
-            printData("accel", accelData);
-            printData("mag", magData);
-
+           // printData("gyro", gyroData);
+            //printData("accel", accelData);
+            //printData("mag", magData);
+          //  printData("gyro off", gyroOff);
 			index++;
 		}
 
@@ -245,6 +274,13 @@ namespace ObjectTracker
 			GL.MatrixMode(MatrixMode.Modelview);
 			GL.LoadIdentity();
 		}
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+
+            RawHidDevice.rawhid_close(0);
+        }
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
 		public struct Data
