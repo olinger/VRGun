@@ -157,42 +157,45 @@ namespace ObjectTracker
 			}
 
 			const float deg2rad = MathHelper.Pi / 180f;
+
+            //gyro data
             Vector3 gyroData;
             gyroData.X = d.rx / 14.375f * deg2rad + 17f;
             gyroData.Y = d.ry / 14.375f * deg2rad + 17.5f;
             gyroData.Z = d.rz / 14.375f * deg2rad - 0.3108204f;
-           // gyroData.X = d.rx / 14.375f * deg2rad + 13.61727f;
-           // gyroData.Y = d.ry / 14.375f * deg2rad + 13.88998f;
-            //gyroData.Z = d.rz / 14.375f * deg2rad - 0.3108204f;
+
+            //accelerometer data
+            Vector3 accelData;
+            accelData.X = d.ax;
+            accelData.Y = d.ay;
+            accelData.Z = d.az;
+
+            //magnometer data
+            Vector3 magData;
+            magData.X = d.mx;
+            magData.Y = d.my;
+            magData.Z = d.mz;
 
 			float ang = gyroData.Length * dt;
 			Vector3 axis = Vector3.Normalize(gyroData);
 
 			rotation *= Quaternion.FromAxisAngle(axis, ang);
 
-            /*Console.WriteLine("gyro x: " + gyroData.X);
-            Console.WriteLine("gyro y: " + gyroData.Y);
-            Console.WriteLine("gyro z: " + gyroData.Z);
-            Console.WriteLine("");*/
+            //print function for debugging, prints label and x y z of vector
+            printData("gyro", gyroData);
+            printData("accel", accelData);
+            printData("mag", magData);
 
 			index++;
-			//temporary motion. replace this
-			/*tmpAngle += MathHelper.Pi / 30f;
-			tmpAngle %= MathHelper.TwoPi;
-
-			rotation = Quaternion.FromAxisAngle(new Vector3(0, 1, 1), tmpAngle);
-
-
-			if (tmpMoveUp)
-				position.Y += 0.1f;
-			else
-				position.Y -= 0.1f;
-
-			if (position.Y >= 2f)
-				tmpMoveUp = false;
-			else if (position.Y <= -2f)
-				tmpMoveUp = true;*/
 		}
+
+        void printData(string t, Vector3 d)
+        {
+            Console.WriteLine(t + " x = " + d.X);
+            Console.WriteLine(t + " y = " + d.Y);
+            Console.WriteLine(t + " z = " + d.Z);
+            Console.WriteLine("");
+        }
 
 		protected override void OnRenderFrame(FrameEventArgs e)
 		{
