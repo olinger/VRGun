@@ -219,9 +219,8 @@ namespace ObjectTracker
             
 			Qinv = Quaternion.Invert(rotation);
 			Vector3 down = Vector4.Transform(new Vector4(0, 1f, 0, 0), Qinv).Xyz;
-			//down *= gravity;
-			//accelData -= down;
-            accelData -= gravity;
+			down *= gravity;
+			accelData -= down;
 			/*if (accelData.X < 1f)
 				accelData.X = 0f;
 			if (accelData.Y < 1f)
@@ -229,13 +228,13 @@ namespace ObjectTracker
 			if (accelData.Z < 5f)
 				accelData.Z = 0f;*/
 
-            
+            /*
 				position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
 			//	position *= 0.1f;
 				pastAccels.Add(accelData);
 				prevPosition = position;
 				printData("position", position);
-				//printData("accel", accelData);
+				//printData("accel", accelData);*/
 	
 			//mag data
 			Vector3 mag;
