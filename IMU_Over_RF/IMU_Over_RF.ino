@@ -58,6 +58,8 @@ void setup() {
     accel.initialize();
     while (!accel.testConnection()){delay(1);}
     
+    accel.setRange(ADXL345_RANGE_8G);
+    
     mag.initialize();
     while (!mag.testConnection()){delay(1);}
     

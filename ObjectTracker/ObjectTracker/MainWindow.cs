@@ -206,7 +206,7 @@ namespace ObjectTracker
 			accelData.X = (d.ax / accelScaleDiv) * 9.806f;
 			accelData.Y = (d.ay / accelScaleDiv) * 9.806f;
 			accelData.Z = (d.az / accelScaleDiv) * 9.806f;
-			accelData -= accelOff;
+			//accelData -= accelOff;
 		   // accelData -= gravity;
 
 			//mag data
@@ -240,7 +240,7 @@ namespace ObjectTracker
 				integralGain = 0;
 
 			gyroData += (tiltCorrect * proportionalGain);
-			gyroOff -= (tiltCorrect * integralGain * (float)e.Time);
+			gyroOff += (tiltCorrect * integralGain * (float)e.Time);
 
 			if (Math.Abs(accelData.Z) >= 9.7 && Math.Abs(accelData.Z) <= 9.9)
 			{
@@ -271,6 +271,14 @@ namespace ObjectTracker
 
 			//rotation = Quaternion.FromAxisAngle(Vector3.UnitY, heading);
 
+			Qinv = Quaternion.Invert(rotation);
+			Vector3 down = Vector4.Transform(new Vector4(0, -1f, 0, 0), Qinv).Xyz;
+			down *= gravity;
+
+			accelData -= down;
+
+			velocity += accelData * (float)e.Time;
+			position += velocity * (float)e.Time;
 
 
 			//print function for debugging, prints label and x y z of vector
