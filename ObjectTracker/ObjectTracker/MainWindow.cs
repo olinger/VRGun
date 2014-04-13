@@ -24,6 +24,7 @@ namespace ObjectTracker
 		private int boxVbo, boxIbo;
 
 		const float dt = 0.001f;
+        const float gyroScaleDiv = 14.375f;
 
 		List<Vector3> acceleration = new List<Vector3>();
 		List<Vector3> gyro = new List<Vector3>();
@@ -151,9 +152,9 @@ namespace ObjectTracker
                 for (int i = 0; i < 100; i++)
                 {
                     result = RawHidDevice.rawhid_recv(0, dp, 64, 1);
-                    gyroOff.X += dp->rx / 14.375f * deg2rad;
-                    gyroOff.Y += dp->ry / 14.375f * deg2rad;
-                    gyroOff.Z += dp->rz / 14.375f * deg2rad;
+                    gyroOff.X += dp->rx / gyroScaleDiv * deg2rad;
+                    gyroOff.Y += dp->ry / gyroScaleDiv * deg2rad;
+                    gyroOff.Z += dp->rz / gyroScaleDiv * deg2rad;
                 }
                 
                 
@@ -161,7 +162,6 @@ namespace ObjectTracker
                 gyroOff.Y = gyroOff.Y / 100f;
                 gyroOff.Z = gyroOff.Z / 100f;
 
-                printData("gyro off", gyroOff);
             }
 		}
 
@@ -174,18 +174,20 @@ namespace ObjectTracker
 			fixed (Data* dp = &d)
 			{
 				result = RawHidDevice.rawhid_recv(0, dp, 64, 2);
+                Vector3 tmp = new Vector3(d.rx, d.ry, d.rz);
+                printData("raw deg ", tmp);
 			}
 
-            if (result <= 0)
-                Console.WriteLine("ERROR");
+            if (d.packetCount != 1337)
+                Console.WriteLine("ERROR" + d.packetCount + " " + sizeof(Data));
 
 			const float deg2rad = MathHelper.Pi / 180f;
 
             //gyro data
             Vector3 gyroData;
-            gyroData.X = d.rx / 14.375f * deg2rad;
-            gyroData.Y = d.ry / 14.375f * deg2rad;
-            gyroData.Z = d.rz / 14.375f * deg2rad;
+            gyroData.X = d.rx / gyroScaleDiv * deg2rad;
+            gyroData.Y = d.ry / gyroScaleDiv * deg2rad;
+            gyroData.Z = d.rz / gyroScaleDiv * deg2rad;
 
             gyroData -= gyroOff;
 
@@ -201,7 +203,7 @@ namespace ObjectTracker
             magData.Y = d.my;
             magData.Z = d.mz;
 
-			float ang = gyroData.Length * dt;
+			float ang = gyroData.Length * ((float)e.Time);
 			Vector3 axis = Vector3.Normalize(gyroData);
 
             if (ang > 0)
@@ -211,7 +213,7 @@ namespace ObjectTracker
                 rotation = Quaternion.Normalize(rotation);
 
             //print function for debugging, prints label and x y z of vector
-           // printData("gyro", gyroData);
+            //printData("gyro", gyroData);
             //printData("accel", accelData);
             //printData("mag", magData);
           //  printData("gyro off", gyroOff);
