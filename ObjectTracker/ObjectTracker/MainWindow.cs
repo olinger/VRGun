@@ -240,7 +240,7 @@ namespace ObjectTracker
             Qinv = Quaternion.Invert(rotation);
             up = Vector4.Transform(new Vector4(0, 1f, 0, 0),Qinv).Xyz;
             Vector3 tiltCorrect = computeCorrection(rotation.Xyz, up);
-            if (accelData.Z >= 9.7 && accelData.Z <= 9.9)
+            if (Math.Abs(accelData.Z) >= 9.7 && Math.Abs(accelData.Z) <= 9.9)
             {
                // printData("tiltCorrect", tiltCorrect);
             }
