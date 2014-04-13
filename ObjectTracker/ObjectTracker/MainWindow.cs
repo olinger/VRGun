@@ -42,7 +42,8 @@ namespace ObjectTracker
 		Quaternion Qinv;
 		Vector3 up;
 
-		SensorFilter tiltSensorFilter = new SensorFilter(1000);
+		FloatFilter tiltSensorFilter = new FloatFilter(1000);
+		VectorFilter pastAccels = new VectorFilter(1000);
 
 		private static readonly byte[] boxInds =
 		{
@@ -206,8 +207,10 @@ namespace ObjectTracker
 			accelData.X = (d.ax / accelScaleDiv) * 9.806f;
 			accelData.Y = (d.ay / accelScaleDiv) * 9.806f;
 			accelData.Z = (d.az / accelScaleDiv) * 9.806f;
-			//accelData -= accelOff;
+			accelData -= accelOff;
 		   // accelData -= gravity;
+
+			pastAccels.Add(accelData);
 
 			//mag data
 			Vector3 mag;
