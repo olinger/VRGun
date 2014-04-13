@@ -31,18 +31,14 @@ namespace ObjectTracker
 		List<Vector3> gyro = new List<Vector3>();
         List<Vector3> mag = new List<Vector3>();
 		int index;
-        int offIndex;
 		Data d;
         Vector3 gyroOff;
         Vector3 accelOff;
         Vector3 velocity;
-        Vector3 accelAvg;
-     
-        //Vector3 displacement;
         Vector3 gravity = new Vector3(0, 0, 9.806f);
 
-        Vector3 accelSum=new Vector3(0,0,0);
-        float accelIndex;
+        Quaternion Qinv;
+        Vector3 up;
 
 		private static readonly byte[] boxInds =
 		{
@@ -208,20 +204,17 @@ namespace ObjectTracker
             accelData.X = (d.ax / accelScaleDiv) * 9.806f;
             accelData.Y = (d.ay / accelScaleDiv) * 9.806f;
             accelData.Z = (d.az / accelScaleDiv) * 9.806f;
+            accelData -= accelOff;
+           // accelData -= gravity;
+
+            printData("accel", accelData);
             /*
-            accelIndex++;
-            accelSum += accelData;
-            if (accelIndex == 10)
-            {
-                accelAvg = (accelSum / accelIndex);
-                accelAvg -= accelOff;
-                accelAvg -= gravity;
-                accelIndex = 0;
-            }
-            velocity += accelAvg * (float)e.Time;
+            velocity += accelData * (float)e.Time;
             Vector3 displacement = velocity * (float)e.Time;
-            position += displacement;*/
-            
+          //  position += displacement;
+           printData("velocity",velocity);
+            printData("accel", accelData);
+            printData("displace", displacement);*/
             //mag data
             Vector3 magData;
             magData.X = d.mx;
@@ -235,17 +228,33 @@ namespace ObjectTracker
 			    rotation *= Quaternion.FromAxisAngle(axis, ang);
 
             //if (index % 500 == 0)
-                rotation = Quaternion.Normalize(rotation);
+            rotation = Quaternion.Normalize(rotation);
 
             //print function for debugging, prints label and x y z of vector
             //printData("gyro", gyroData);
           //  printData("accel", accelData);
           //  Console.WriteLine(accelData.Length);
-            //printData("mag", magData);
+          //  printData("mag", magData);
           //  printData("gyro off", gyroOff);
-           
+
+            Qinv = Quaternion.Invert(rotation);
+            up = Vector4.Transform(new Vector4(0, 1f, 0, 0),Qinv).Xyz;
+            Vector3 tiltCorrect = computeCorrection(rotation.Xyz, up);
+            if (accelData.Z >= 9.7 && accelData.Z <= 9.9)
+            {
+               // printData("tiltCorrect", tiltCorrect);
+            }
 			index++;
 		}
+
+        Vector3 computeCorrection(Vector3 current, Vector3 estimate)
+        {
+            current = Vector3.Normalize(current);
+            estimate = Vector3.Normalize(estimate);
+            Vector3 corrected = Vector3.Cross(current,estimate);
+            float cosError = Vector3.Dot(current,estimate);
+            return corrected * (float)Math.Sqrt(2 / (1 + cosError + float.Epsilon));
+        }
 
         void printData(string t, Vector3 d)
         {
