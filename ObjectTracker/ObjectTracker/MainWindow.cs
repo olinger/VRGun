@@ -32,9 +32,8 @@ namespace ObjectTracker
 		const float radsPerPixel = MathHelper.PiOver4 / 1024f;
 		const float ledDistance = 50.8f; //in mm
 
-		List<Vector3> acceleration = new List<Vector3>();
-		List<Vector3> gyro = new List<Vector3>();
-		List<Vector3> mag = new List<Vector3>();
+		Vector3 ir_position;
+
 		int index;
 		Data d;
 		Vector3 gyroOff;
@@ -123,39 +122,6 @@ namespace ObjectTracker
 			GL.Enable(EnableCap.Lighting);
 			GL.Enable(EnableCap.Light0);
 			GL.Light(LightName.Light0, LightParameter.Ambient, new Vector4(0.6f, 0.6f, 0.6f, 1f));
-
-			/*string[] lines = File.ReadAllLines("imu_data.csv");
-			string[][] data = new string[lines.Length-1][];
-			string[] s1 = lines[0].Split(',');
-			for(int i=0;i<lines.Length-1;i++)
-			{
-				string[] s = lines[i+1].Split(',');
-				data[i] = s;
-			}
-
-			for (int i = 0; i < data.Length;i++)
-			{
-				Vector3 tmp;
-				tmp.X = float.Parse(data[i][0]) / 32768f;
-				tmp.Y = float.Parse(data[i][1]) / 32768f;
-				tmp.Z = float.Parse(data[i][2]) / 32768f;
-				acceleration.Add(tmp);
-				tmp.X = float.Parse(data[i][3]) / 32768f;
-				tmp.Y = float.Parse(data[i][4]) / 32768f;
-				tmp.Z = float.Parse(data[i][5]) / 32768f;
-				mag.Add(tmp);
-				tmp.X = float.Parse(data[i][6]) / 16.384f * deg2rad;
-				tmp.Y = float.Parse(data[i][7]) / 16.384f * deg2rad;
-				tmp.Z = float.Parse(data[i][8]) / 16.384f * deg2rad;
-				gyro.Add(tmp);
-			}
-
-			Console.WriteLine(acceleration.Min(v => v.X));
-			Console.WriteLine(acceleration.Max(v => v.X));
-			Console.WriteLine(gyro.Min(v => v.X));
-			Console.WriteLine(gyro.Max(v => v.X));
-			Console.WriteLine(mag.Min(v => v.X));
-			Console.WriteLine(mag.Max(v => v.X));*/
 
 			RawHidDevice.rawhid_open(1, 0x16C0, 0x0486, 0xFFAB, 0x0200);
 			int result = 0;

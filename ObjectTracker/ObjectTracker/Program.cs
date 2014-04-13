@@ -10,7 +10,7 @@ namespace ObjectTracker
 	{
 		static void Main(string[] args)
 		{
-			using (MainWindow w = new MainWindow())
+			using (SecondWindow w = new SecondWindow())
 				w.Run();
 		}
 	}

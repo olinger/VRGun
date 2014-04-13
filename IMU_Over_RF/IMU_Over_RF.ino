@@ -17,11 +17,24 @@
 #include "ADXL345.h"
 #include "HMC5883L.h"
 #include "ITG3200.h"
+#include "imu_types.h"
+#include "math.h"
 
 //RF24 stuff
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
+
+#define GYRO_SCALE_DIV 14.375
+#define DEG_2_RAD (PI / 180)
+
+#define ACC_SCALE_DIV 256
+#define GRAVITY 9.806
+
+#define GAIN 0.05
+#define TOLERANCE 0.00001
+
+#define MILLIS 0.001
 
 // class default I2C address is 0x53
 // specific I2C addresses may be passed as a parameter here
@@ -46,6 +59,13 @@ ITG3200 gyro;
 
 int16_t gx, gy, gz;
 
+vec3_t gyroOff;
+
+float tiltFilter[1000];
+int tiltFilterInd = 0;
+int tiltFilterCount = 0;
+buffer_t b;
+
 int asdf;
 
 // A9-6 are for reading flex sensors
@@ -53,6 +73,206 @@ int asdf;
 
 //RF24 radio(10, 12);
 //const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
+
+void tiltFilter_add(float ang)
+{
+  tiltFilter[tiltFilterInd++] = ang;
+  if (tiltFilterInd >= 1000)
+    tiltFilterInd = 0;
+    
+  if (tiltFilterCount < 1000)
+    tiltFilterCount++;
+}
+
+float tiltFilter_mean()
+{
+  float sum = 0;
+  for (int i = 0; i < tiltFilterCount; i++)
+    sum += tiltFilter[i];
+  return sum / tiltFilterCount;
+}
+
+quat_t quat_ident()
+{
+  quat_t q;
+  q.x = 0;
+  q.y = 0;
+  q.z = 0;
+  q.w = 1;
+  
+  return q;
+}
+
+float quat_len(quat_t q)
+{
+  return sqrt(quat_lenSq(q));
+}
+
+float quat_lenSq(quat_t q)
+{
+  return q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+}
+
+quat_t quat_inv(quat_t q)
+{
+  float lSq = quat_lenSq(q);
+  if (lSq != 0.0)
+  {
+    float i = 1.0 / lSq;
+    quat_t nq;
+    nq.x = q.x * -i;
+    nq.y = q.y * -i;
+    nq.z = q.z * -i;
+    nq.w = q.w * i;
+    return nq;
+  }
+  else
+    return q;
+}
+
+quat_t quat_norm(quat_t q)
+{
+  quat_t r;
+  float len = quat_len(q);
+  
+  r.x = q.x / len;
+  r.y = q.y / len;
+  r.z = q.z / len;
+  r.w = q.w / len;
+  
+  return r;
+}
+
+quat_t quat_mult(quat_t a, quat_t b)
+{
+  quat_t r;
+  r.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+  r.y = a.w * b.y + a.x * b.z + a.y * b.w + a.z * b.x;
+  r.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+  r.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+  
+  return r;
+}
+
+quat_t quat_from_axis_angle(vec3_t axis, float angle)
+{
+  if (vec3_lenSq(axis) == 0)
+    return quat_ident();
+    
+  quat_t r = quat_ident();
+  
+  angle *= 0.5;
+  float angS = sin(angle);
+  float angC = cos(angle);
+  axis = vec3_norm(axis);
+  
+  r.x = axis.x * angS;
+  r.y = axis.y * angS;
+  r.z = axis.z * angS;
+  r.w = angC;
+  
+  return quat_norm(r);
+}
+
+vec3_t vec3_add(vec3_t a, vec3_t b)
+{
+  vec3_t r;
+  r.x = a.x + b.x;
+  r.y = a.y + b.y;
+  r.z = a.z + b.z;
+  
+  return r;
+}
+
+vec3_t vec3_sub(vec3_t a, vec3_t b)
+{
+  vec3_t r;
+  r.x = a.x - b.x;
+  r.y = a.y - b.y;
+  r.z = a.z - b.z;
+  
+  return r;
+}
+
+vec3_t vec3_mult(vec3_t a, float b)
+{
+  vec3_t r;
+  r.x = a.x * b;
+  r.y = a.y * b;
+  r.z = a.z * b;
+  
+  return r;
+}
+
+float vec3_dot(vec3_t a, vec3_t b)
+{
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+vec3_t vec3_cross(vec3_t a, vec3_t b)
+{
+  vec3_t r;
+  r.x = a.y * b.z - a.z * b.y;
+  r.y = a.z * b.x - a.x * b.z;
+  r.z = a.x * b.y - a.y * b.x;
+  
+  return r;
+}
+
+float vec3_ang(vec3_t a, vec3_t b)
+{
+  float d = vec3_dot(a, b);
+  float al = vec3_len(a);
+  float bl = vec3_len(b);
+  
+  return acos(d / (al * bl));
+}
+
+float vec3_len(vec3_t v)
+{
+  return sqrt(vec3_lenSq(v));
+}
+
+float vec3_lenSq(vec3_t v)
+{
+  return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+vec3_t vec3_norm(vec3_t v)
+{
+  float len = vec3_len(v);
+  vec3_t r;
+  r.x = v.x / len;
+  r.y = v.y / len;
+  r.z = v.z / len;
+  
+  return r;
+}
+
+vec3_t vec3_transf(vec3_t v, quat_t q)
+{
+  vec3_t xyz, tmp, tmp2;
+  xyz.x = q.x;
+  xyz.y = q.y;
+  xyz.z = q.z;
+  
+  tmp = vec3_cross(xyz, v);
+  tmp2 = vec3_mult(v, q.w);
+  tmp = vec3_add(tmp, tmp2);
+  tmp = vec3_cross(xyz, tmp);
+  tmp = vec3_mult(tmp, 2);
+  return vec3_add(v, tmp);
+}
+
+vec3_t calc_tilt_correction(vec3_t acc, vec3_t est)
+{
+  acc = vec3_norm(acc);
+  est = vec3_norm(est);
+  
+  vec3_t corrected = vec3_cross(acc, est);
+  float cosErr = vec3_dot(acc, est);
+  return vec3_mult(corrected, sqrt(2 / (1 + cosErr + TOLERANCE)));
+}
 
 void setup() {
     Serial.begin(9600);
@@ -79,21 +299,23 @@ void setup() {
     gyro.initialize();
     while (!gyro.testConnection()){delay(1);}
     
-    //gyro.setFullScaleRange(3);
+    vec3_t v;
+    v.x = v.y = v.z = 0;
+    for (int i = 0; i < 100; i++)
+    {
+      gyro.getRotation(&gx, &gy, &gz);
+      v.x += (float)gx / GYRO_SCALE_DIV * DEG_2_RAD;
+      v.y += (float)gy / GYRO_SCALE_DIV * DEG_2_RAD;
+      v.z += (float)gz / GYRO_SCALE_DIV * DEG_2_RAD;
+    }
     
-    /*delay(1000);
-    gyro.init(ITG3200_ADDR_AD0_LOW);*/
+    v.x /= 100;
+    v.y /= 100;
+    v.z /= 100;
     
-  //  radio.begin();
-    //radio.setRetries(15, 15);
-    
-    //radio.openWritingPipe(pipes[0]);
-    //radio.openReadingPipe(1, pipes[1]);
+    gyroOff = v;
 }
 
-// RawHID packets are always 64 bytes
-byte buffer[64];
-elapsedMillis msUntilNextSend;
 unsigned int packetCount = 0;
 int n;
 void loop() 
@@ -105,57 +327,68 @@ void loop()
     mag.getHeading(&mx, &my, &mz);
     gyro.getRotation(&gx, &gy, &gz);
     
-    /*if (gyro.isRawDataReady())
-    {
-      gyro.readGyro(&gx, &gy, &gz);
-    }*/
-
-    buffer[0] = 0xAB;
-    buffer[1] = 0xCD;
+    vec3_t acc;
+    acc.x = ax / ACC_SCALE_DIV * GRAVITY;
+    acc.y = az / ACC_SCALE_DIV * GRAVITY;
+    acc.z = ay / ACC_SCALE_DIV * GRAVITY;
     
-    buffer[2] = lowByte(ax);
-    buffer[3] = highByte(ax);
-    buffer[4] = lowByte(ay);
-    buffer[5] = highByte(ay);
-    buffer[6] = lowByte(az);
-    buffer[7] = highByte(az);
+    quat_t qInv = quat_inv(b.q);
+    vec3_t up;
+    up.x = 0;
+    up.y = 1;
+    up.z = 0;
+    up = vec3_transf(up, qInv);
     
-    buffer[8] = lowByte(mx);
-    buffer[9] = highByte(mx);
-    buffer[10] = lowByte(my);
-    buffer[11] = highByte(my);
-    buffer[12] = lowByte(mz);
-    buffer[13] = highByte(mz);
+    vec3_t gyr;
+    gyr.x = gx / GYRO_SCALE_DIV * DEG_2_RAD;
+    gyr.y = gy / GYRO_SCALE_DIV * DEG_2_RAD;
+    gyr.z = gz / GYRO_SCALE_DIV * DEG_2_RAD;
+    gyr = vec3_sub(gyr, gyroOff);
     
-    /*int16_t gxi = (int16_t)gx;
-    int16_t gyi = (int16_t)gy;
-    int16_t gzi = (int16_t)gz;*/
+    vec3_t down;
+    down.x = 0;
+    down.y = 1;
+    down.z = 0;
+    down = vec3_transf(down, qInv);
+    down = vec3_mult(down, GRAVITY);
+    acc = vec3_sub(acc, down);
     
-    buffer[14] = lowByte(gx);
-    buffer[15] = highByte(gx);
-    buffer[16] = lowByte(gy);
-    buffer[17] = highByte(gy);
-    buffer[18] = lowByte(gz);
-    buffer[19] = highByte(gz);
-    // fill the rest with zeros
-    for (int i=20; i<64; i++) {
-      buffer[i] = 0;
-    }
-    // and put a count of packets sent at the end
-    buffer[62] = lowByte(packetCount);
-    buffer[63] = highByte(packetCount);
-    packetCount = 1337;
-    // actually send the packet
-    n = RawHID.send(buffer, 2);
-    //digitalWrite(13, HIGH);
-  //}
-  
-  //radio.stopListening();
-  
-  //bool ok = radio.write(buffer, 64);
-  
-  //if (!ok)
-    //Serial.write("SEND FAILED\n");
+    float spikeThreshold = 0.01;
+    float gravityThreshold = 0.1;
+    float proportionalGain = 5 * GAIN;
+    float integralGain = 0.0125f;
     
-  //radio.startListening();
+    vec3_t tilt_correct = calc_tilt_correction(acc, up);
+    
+    float tiltAng = vec3_ang(up, acc);
+    tiltFilter_add(tiltAng);
+    if (tiltAng > tiltFilter_mean() + spikeThreshold)
+      proportionalGain = integralGain = 0;
+    
+    if (abs(vec3_len(acc) / GRAVITY - 1) > gravityThreshold)
+      integralGain = 0;
+      
+    gyr = vec3_add(gyr, vec3_mult(tilt_correct, proportionalGain));
+    gyroOff = vec3_sub(gyroOff, vec3_mult(tilt_correct, integralGain * MILLIS));
+    
+    float ang = vec3_len(gyr) * MILLIS;
+    vec3_t axis = vec3_norm(gyr);
+    
+    if (ang > 0)
+      b.q = quat_mult(b.q, quat_from_axis_angle(axis, ang));
+      
+    vec3_t mag;
+    mag.x = mx * DEG_2_RAD;
+    mag.y = my * DEG_2_RAD;
+    mag.z = mz * DEG_2_RAD;
+      
+    //b.q = quat_norm(b.q);
+    b.a = acc;
+    b.m = mag;
+    b.f1 = analogRead(23);
+    b.f2 = analogRead(22);
+    b.f3 = analogRead(21);
+    b.f4 = analogRead(20);
+    b.chk = 1337;
+    n = RawHID.send(&b, 2);
 }
