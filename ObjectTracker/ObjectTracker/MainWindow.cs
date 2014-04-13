@@ -38,7 +38,7 @@ namespace ObjectTracker
 		Vector3 accelOff;
 		Vector3 velocity;
 		Vector3 gravityVec = new Vector3(0, 0, gravity);
-
+        Vector3 prevPosition = new Vector3(0, 0, 0);
 		Quaternion Qinv;
 		Vector3 up;
 
@@ -163,15 +163,16 @@ namespace ObjectTracker
 				for (int i = 0; i < 100; i++)
 				{
 					result = RawHidDevice.rawhid_recv(0, dp, 64, 1);
-					gyroOff.X += dp->rx / gyroScaleDiv * deg2rad;
-					gyroOff.Y += dp->ry / gyroScaleDiv * deg2rad;
-					gyroOff.Z += dp->rz / gyroScaleDiv * deg2rad;
+
+					//gyroOff.X += dp->rx / gyroScaleDiv * deg2rad;
+					//gyroOff.Y += dp->ry / gyroScaleDiv * deg2rad;
+					//gyroOff.Z += dp->rz / gyroScaleDiv * deg2rad;
 				}
 				
 				
-				gyroOff.X = gyroOff.X / 100f;
-				gyroOff.Y = gyroOff.Y / 100f;
-				gyroOff.Z = gyroOff.Z / 100f;
+				//gyroOff.X = gyroOff.X / 100f;
+				//gyroOff.Y = gyroOff.Y / 100f;
+				//gyroOff.Z = gyroOff.Z / 100f;
 				Vector3 tmp=new Vector3(9.806f*d.ax/accelScaleDiv,9.806f*d.ay/accelScaleDiv,9.806f*d.az/accelScaleDiv);
 				accelOff = tmp;
 				accelOff -= Vector3.Normalize(tmp) * 9.806f;
@@ -210,8 +211,27 @@ namespace ObjectTracker
 			accelData -= accelOff;
 		   // accelData -= gravity;
 
-			pastAccels.Add(accelData);
+            Qinv = Quaternion.Invert(rotation);
+            Vector3 down = Vector4.Transform(new Vector4(0, 0, 1f, 0), Qinv).Xyz;
+            down *= gravity;
+            accelData += down;
 
+            if (accelData.X < 1f)
+                accelData.X = 0f;
+            if (accelData.Y < 1f)
+                accelData.Y = 0f;
+            if (accelData.Z < 5f)
+                accelData.Z = 0f;
+            /*
+            if (index > 100)
+            {
+                position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
+                //position *= 0.7f;
+                pastAccels.Add(accelData);
+                prevPosition = position;
+                // printData("position", position);
+                printData("accel", accelData);
+            }*/
 			//mag data
 			Vector3 mag;
 			mag.X = d.mx * deg2rad;
@@ -274,14 +294,10 @@ namespace ObjectTracker
 
 			//rotation = Quaternion.FromAxisAngle(Vector3.UnitY, heading);
 
-			Qinv = Quaternion.Invert(rotation);
-			Vector3 down = Vector4.Transform(new Vector4(0, -1f, 0, 0), Qinv).Xyz;
-			down *= gravity;
+			
 
-			accelData -= down;
-
-			velocity += accelData * (float)e.Time;
-			position += velocity * (float)e.Time;
+			//velocity += accelData * (float)e.Time;
+			//position += velocity * (float)e.Time;
 
 
 			//print function for debugging, prints label and x y z of vector

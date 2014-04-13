@@ -56,6 +56,18 @@ namespace ObjectTracker
 			index = 0;
 		}
 
+        public Vector3 Prev()
+        {
+            if (count == 0)
+                return Vector3.Zero;
+
+            int prevInd = index - 1;
+            if (index == 0)
+                prevInd = count - 1;
+
+            return circBuff[prevInd];
+        }
+
 		public void Add(Vector3 elem)
 		{
 			circBuff[index++] = elem;
