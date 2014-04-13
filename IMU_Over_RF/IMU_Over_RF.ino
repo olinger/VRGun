@@ -25,16 +25,16 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 
-#define GYRO_SCALE_DIV 14.375
-#define DEG_2_RAD (PI / 180)
+const float GYRO_SCALE_DIV = 14.375;
+const float DEG_2_RAD = (PI / 180);
 
-#define ACC_SCALE_DIV 256
-#define GRAVITY 9.806
+const float ACC_SCALE_DIV = 256;
+const float GRAVITY = 9.806;
 
-#define GAIN 0.05
-#define TOLERANCE 0.00001
+const float GAIN = 0.05;
+const float TOLERANCE = 0.00001;
 
-#define MILLIS 0.001
+const float MILLIS = 0.001;
 
 // class default I2C address is 0x53
 // specific I2C addresses may be passed as a parameter here
@@ -314,6 +314,7 @@ void setup() {
     v.z /= 100;
     
     gyroOff = v;
+    b.q = quat_ident();
 }
 
 unsigned int packetCount = 0;
