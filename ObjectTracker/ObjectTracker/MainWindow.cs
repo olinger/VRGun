@@ -23,8 +23,9 @@ namespace ObjectTracker
 
 		private int boxVbo, boxIbo;
 
-		const float dt = 0.001f;
         const float gyroScaleDiv = 14.375f;
+        const float deg2rad = MathHelper.Pi / 180f;
+        const float accelScaleDiv = 256f;
 
 		List<Vector3> acceleration = new List<Vector3>();
 		List<Vector3> gyro = new List<Vector3>();
@@ -33,6 +34,16 @@ namespace ObjectTracker
         int offIndex;
 		Data d;
         Vector3 gyroOff;
+        Vector3 accelOff;
+        Vector3 velocity;
+        Vector3 accelAvg;
+     
+        //Vector3 displacement;
+        Vector3 gravity = new Vector3(0, 0, 9.806f);
+
+        Vector3 accelSum=new Vector3(0,0,0);
+        float accelIndex;
+
 		private static readonly byte[] boxInds =
 		{
 			0,  2,  1,  0,  3,  2,  //-Z
@@ -118,8 +129,6 @@ namespace ObjectTracker
 				data[i] = s;
 			}
 
-			const float deg2rad = MathHelper.Pi / 180f;
-
 			for (int i = 0; i < data.Length;i++)
 			{
 				Vector3 tmp;
@@ -147,6 +156,7 @@ namespace ObjectTracker
             RawHidDevice.rawhid_open(1, 0x16C0, 0x0486, 0xFFAB, 0x0200);
             int result = 0;
             gyroOff=Vector3.Zero;
+            accelOff=Vector3.Zero;
             fixed (Data* dp = &d)
             {
                 for (int i = 0; i < 100; i++)
@@ -161,7 +171,10 @@ namespace ObjectTracker
                 gyroOff.X = gyroOff.X / 100f;
                 gyroOff.Y = gyroOff.Y / 100f;
                 gyroOff.Z = gyroOff.Z / 100f;
-
+                Vector3 tmp=new Vector3(9.806f*d.ax/accelScaleDiv,9.806f*d.ay/accelScaleDiv,9.806f*d.az/accelScaleDiv);
+                accelOff = tmp;
+                accelOff -= Vector3.Normalize(tmp) * 9.806f;
+                printData("accel off", accelOff);
             }
 		}
 
@@ -175,7 +188,6 @@ namespace ObjectTracker
 			{
 				result = RawHidDevice.rawhid_recv(0, dp, 64, 2);
                 Vector3 tmp = new Vector3(d.rx, d.ry, d.rz);
-                printData("raw deg ", tmp);
 			}
 
             if (d.packetCount != 1337)
@@ -188,16 +200,29 @@ namespace ObjectTracker
             gyroData.X = d.rx / gyroScaleDiv * deg2rad;
             gyroData.Y = d.ry / gyroScaleDiv * deg2rad;
             gyroData.Z = d.rz / gyroScaleDiv * deg2rad;
-
             gyroData -= gyroOff;
 
-            //accelerometer data
+            //accel data
             Vector3 accelData;
-            accelData.X = d.ax;
-            accelData.Y = d.ay;
-            accelData.Z = d.az;
-
-            //magnometer data
+            
+            accelData.X = (d.ax / accelScaleDiv) * 9.806f;
+            accelData.Y = (d.ay / accelScaleDiv) * 9.806f;
+            accelData.Z = (d.az / accelScaleDiv) * 9.806f;
+            /*
+            accelIndex++;
+            accelSum += accelData;
+            if (accelIndex == 10)
+            {
+                accelAvg = (accelSum / accelIndex);
+                accelAvg -= accelOff;
+                accelAvg -= gravity;
+                accelIndex = 0;
+            }
+            velocity += accelAvg * (float)e.Time;
+            Vector3 displacement = velocity * (float)e.Time;
+            position += displacement;*/
+            
+            //mag data
             Vector3 magData;
             magData.X = d.mx;
             magData.Y = d.my;
@@ -214,9 +239,11 @@ namespace ObjectTracker
 
             //print function for debugging, prints label and x y z of vector
             //printData("gyro", gyroData);
-            //printData("accel", accelData);
+          //  printData("accel", accelData);
+          //  Console.WriteLine(accelData.Length);
             //printData("mag", magData);
           //  printData("gyro off", gyroOff);
+           
 			index++;
 		}
 
