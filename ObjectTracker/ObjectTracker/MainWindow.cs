@@ -38,7 +38,7 @@ namespace ObjectTracker
 		Vector3 accelOff;
 		Vector3 velocity;
 		Vector3 gravityVec = new Vector3(0, 0, gravity);
-        Vector3 prevPosition = new Vector3(0, 0, 0);
+		Vector3 prevPosition = new Vector3(0, 0, 0);
 		Quaternion Qinv;
 		Vector3 up;
 
@@ -164,18 +164,18 @@ namespace ObjectTracker
 				{
 					result = RawHidDevice.rawhid_recv(0, dp, 64, 1);
 
-					//gyroOff.X += dp->rx / gyroScaleDiv * deg2rad;
-					//gyroOff.Y += dp->ry / gyroScaleDiv * deg2rad;
-					//gyroOff.Z += dp->rz / gyroScaleDiv * deg2rad;
+					//accelOff += new Vector3(d.ax / accelScaleDiv * gravity, d.ay / accelScaleDiv * gravity, d.az / accelScaleDiv * gravity);
+					gyroOff.X += dp->rx / gyroScaleDiv * deg2rad;
+					gyroOff.Y += dp->ry / gyroScaleDiv * deg2rad;
+					gyroOff.Z += dp->rz / gyroScaleDiv * deg2rad;
 				}
 				
 				
-				//gyroOff.X = gyroOff.X / 100f;
-				//gyroOff.Y = gyroOff.Y / 100f;
-				//gyroOff.Z = gyroOff.Z / 100f;
-				Vector3 tmp=new Vector3(9.806f*d.ax/accelScaleDiv,9.806f*d.ay/accelScaleDiv,9.806f*d.az/accelScaleDiv);
-				accelOff = tmp;
-				accelOff -= Vector3.Normalize(tmp) * 9.806f;
+				gyroOff.X = gyroOff.X / 100f;
+				gyroOff.Y = gyroOff.Y / 100f;
+				gyroOff.Z = gyroOff.Z / 100f;
+				accelOff = new Vector3(d.ax / accelScaleDiv * gravity, d.ay / accelScaleDiv * gravity, d.az / accelScaleDiv * gravity);
+				accelOff -= Vector3.Normalize(accelOff) * 9.806f;
 				printData("accel off", accelOff);
 			}
 		}
@@ -195,6 +195,18 @@ namespace ObjectTracker
 			if (d.packetCount != 1337)
 				Console.WriteLine("ERROR" + d.packetCount + " " + sizeof(Data));
 
+			//accel data
+			Vector3 accelData;
+
+			accelData.X = (d.ax / accelScaleDiv) * gravity;
+			accelData.Y = (d.ay / accelScaleDiv) * gravity;
+			accelData.Z = (d.az / accelScaleDiv) * gravity;
+			//accelData -= accelOff;
+			//accelData -= gravityVec;
+
+			Qinv = Quaternion.Invert(rotation);
+			Vector3 up = Vector4.Transform(new Vector4(0, 1f, 0, 0), Qinv).Xyz;
+
 			//gyro data
 			Vector3 gyroData;
 			gyroData.X = d.rx / gyroScaleDiv * deg2rad;
@@ -202,36 +214,27 @@ namespace ObjectTracker
 			gyroData.Z = d.rz / gyroScaleDiv * deg2rad;
 			gyroData -= gyroOff;
 
-			//accel data
-			Vector3 accelData;
-			
-			accelData.X = (d.ax / accelScaleDiv) * 9.806f;
-			accelData.Y = (d.ay / accelScaleDiv) * 9.806f;
-			accelData.Z = (d.az / accelScaleDiv) * 9.806f;
-			accelData -= accelOff;
-		   // accelData -= gravity;
+			/*Qinv = Quaternion.Invert(rotation);
+			Vector3 down = Vector4.Transform(new Vector4(0, 0, -1f, 0), Qinv).Xyz;
+			down *= gravity;
+			accelData += down;*/
 
-            Qinv = Quaternion.Invert(rotation);
-            Vector3 down = Vector4.Transform(new Vector4(0, 0, 1f, 0), Qinv).Xyz;
-            down *= gravity;
-            accelData += down;
+			/*if (accelData.X < 1f)
+				accelData.X = 0f;
+			if (accelData.Y < 1f)
+				accelData.Y = 0f;
+			if (accelData.Z < 5f)
+				accelData.Z = 0f;*/
 
-            if (accelData.X < 1f)
-                accelData.X = 0f;
-            if (accelData.Y < 1f)
-                accelData.Y = 0f;
-            if (accelData.Z < 5f)
-                accelData.Z = 0f;
-            /*
-            if (index > 100)
-            {
-                position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
-                //position *= 0.7f;
-                pastAccels.Add(accelData);
-                prevPosition = position;
-                // printData("position", position);
-                printData("accel", accelData);
-            }*/
+			//if (index > 100)
+			{
+				/*position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
+				//position *= 0.7f;
+				pastAccels.Add(accelData);
+				prevPosition = position;
+				// printData("position", position);
+				printData("accel", accelData);*/
+			}
 			//mag data
 			Vector3 mag;
 			mag.X = d.mx * deg2rad;
@@ -245,14 +248,12 @@ namespace ObjectTracker
 				heading += MathHelper.TwoPi;
 			//Console.WriteLine(heading * 180f / MathHelper.Pi);
 
-			Qinv = Quaternion.Invert(rotation);
-			Vector3 up = Vector4.Transform(new Vector4(0, 1f, 0, 0), Qinv).Xyz;
-			Vector3 tiltCorrect = CalculateTiltCorrection(accelData, up);
-
 			const float spikeThreshold = 0.01f;
 			const float gravityThreshold = 0.1f;
 			float proportionalGain = 5 * gain;
 			float integralGain = 0.0125f;
+			
+			Vector3 tiltCorrect = CalculateTiltCorrection(accelData, up);
 
 			float tiltAngle = Vector3.CalculateAngle(up, accelData);
 			tiltSensorFilter.Add(tiltAngle);
@@ -263,7 +264,7 @@ namespace ObjectTracker
 				integralGain = 0;
 
 			gyroData += (tiltCorrect * proportionalGain);
-			gyroOff += (tiltCorrect * integralGain * (float)e.Time);
+			gyroOff -= (tiltCorrect * integralGain * (float)e.Time);
 
 			if (Math.Abs(accelData.Z) >= 9.7 && Math.Abs(accelData.Z) <= 9.9)
 			{
@@ -289,8 +290,8 @@ namespace ObjectTracker
 			if (ang > 0)
 				rotation *= Quaternion.FromAxisAngle(axis, ang);
 
-			//if (index % 500 == 0)
-			rotation = Quaternion.Normalize(rotation);
+			if (index % 500 == 0)
+				rotation = Quaternion.Normalize(rotation);
 
 			//rotation = Quaternion.FromAxisAngle(Vector3.UnitY, heading);
 
