@@ -48,12 +48,25 @@ int16_t gx, gy, gz;
 
 int asdf;
 
+// A9-6 are for reading flex sensors
+// D3-6 are for writing to vibes
+
 //RF24 radio(10, 12);
 //const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
 
 void setup() {
     Serial.begin(9600);
     Wire.begin();
+    
+    pinMode(3, OUTPUT);
+    pinMode(4, OUTPUT);
+    pinMode(5, OUTPUT);
+    pinMode(6, OUTPUT);
+    
+    /*analogWrite(3, 0xff);
+    analogWrite(4, 0xff);
+    analogWrite(5, 0xff);
+    analogWrite(6, 0xff);*/
     
     accel.initialize();
     while (!accel.testConnection()){delay(1);}

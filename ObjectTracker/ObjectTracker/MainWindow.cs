@@ -29,6 +29,9 @@ namespace ObjectTracker
 		const float gain = 0.05f;
 		const float gravity = 9.806f;
 
+		const float radsPerPixel = MathHelper.PiOver4 / 1024f;
+		const float ledDistance = 50.8f; //in mm
+
 		List<Vector3> acceleration = new List<Vector3>();
 		List<Vector3> gyro = new List<Vector3>();
 		List<Vector3> mag = new List<Vector3>();
