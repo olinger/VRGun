@@ -174,7 +174,7 @@ namespace ObjectTracker
 				gyroOff.X = gyroOff.X / 100f;
 				gyroOff.Y = gyroOff.Y / 100f;
 				gyroOff.Z = gyroOff.Z / 100f;
-				accelOff = new Vector3(d.ax / accelScaleDiv * gravity, d.ay / accelScaleDiv * gravity, d.az / accelScaleDiv * gravity);
+				accelOff = new Vector3(d.ax / accelScaleDiv * gravity, d.az / accelScaleDiv * gravity, d.ay / accelScaleDiv * gravity);
 				accelOff -= Vector3.Normalize(accelOff) * 9.806f;
 				printData("accel off", accelOff);
 			}
@@ -199,8 +199,8 @@ namespace ObjectTracker
 			Vector3 accelData;
 
 			accelData.X = (d.ax / accelScaleDiv) * gravity;
-			accelData.Y = (d.ay / accelScaleDiv) * gravity;
-			accelData.Z = (d.az / accelScaleDiv) * gravity;
+			accelData.Y = (d.az / accelScaleDiv) * gravity;
+			accelData.Z = (d.ay / accelScaleDiv) * gravity;
 			//accelData -= accelOff;
 			//accelData -= gravityVec;
 
@@ -213,11 +213,11 @@ namespace ObjectTracker
 			gyroData.Y = d.ry / gyroScaleDiv * deg2rad;
 			gyroData.Z = d.rz / gyroScaleDiv * deg2rad;
 			gyroData -= gyroOff;
-
-			/*Qinv = Quaternion.Invert(rotation);
-			Vector3 down = Vector4.Transform(new Vector4(0, 0, -1f, 0), Qinv).Xyz;
+            
+			Qinv = Quaternion.Invert(rotation);
+			Vector3 down = Vector4.Transform(new Vector4(0, 1f, 0, 0), Qinv).Xyz;
 			down *= gravity;
-			accelData += down;*/
+			accelData -= down;
 
 			/*if (accelData.X < 1f)
 				accelData.X = 0f;
@@ -226,15 +226,14 @@ namespace ObjectTracker
 			if (accelData.Z < 5f)
 				accelData.Z = 0f;*/
 
-			//if (index > 100)
-			{
-				/*position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
-				//position *= 0.7f;
+
+				position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
+				position *= 0.7f;
 				pastAccels.Add(accelData);
 				prevPosition = position;
 				// printData("position", position);
-				printData("accel", accelData);*/
-			}
+				printData("accel", accelData);
+	
 			//mag data
 			Vector3 mag;
 			mag.X = d.mx * deg2rad;
@@ -274,7 +273,7 @@ namespace ObjectTracker
 			/*
 			velocity += accelData * (float)e.Time;
 			Vector3 displacement = velocity * (float)e.Time;
-		  //  position += displacement;
+		    position += displacement;
 		   printData("velocity",velocity);
 			printData("accel", accelData);
 			printData("displace", displacement);*/
