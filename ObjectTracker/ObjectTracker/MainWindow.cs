@@ -43,6 +43,7 @@ namespace ObjectTracker
 		Vector3 prevPosition = new Vector3(0, 0, 0);
 		Quaternion Qinv;
 		Vector3 up;
+        Vector3 up2;
 
 		FloatFilter tiltSensorFilter = new FloatFilter(1000);
 		VectorFilter pastAccels = new VectorFilter(1000);
@@ -184,24 +185,9 @@ namespace ObjectTracker
 			gyroData -= gyroOff;
             
 			Qinv = Quaternion.Invert(rotation);
-			Vector3 down = Vector4.Transform(new Vector4(0, 1f, 0, 0), Qinv).Xyz;
+			Vector3 down = Vector3.Transform(new Vector3(0, 1f, 0), Qinv);
 			down *= gravity;
 			accelData -= down;
-			/*if (accelData.X < 1f)
-				accelData.X = 0f;
-			if (accelData.Y < 1f)
-				accelData.Y = 0f;
-			if (accelData.Z < 5f)
-				accelData.Z = 0f;*/
-
-            /*
-				position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
-			//	position *= 0.1f;
-				pastAccels.Add(accelData);
-				prevPosition = position;
-				printData("position", position);
-				//printData("accel", accelData);*/
-	
 			//mag data
 			Vector3 mag;
 			mag.X = d.mx * deg2rad;
@@ -213,7 +199,8 @@ namespace ObjectTracker
 			float heading = (float)Math.Atan2(mag.Y, mag.X);
 			if (heading < 0)
 				heading += MathHelper.TwoPi;
-			//Console.WriteLine(heading * 180f / MathHelper.Pi);
+			Console.WriteLine(heading * 180f / MathHelper.Pi);
+            //Console.Out.WriteLine(heading);
 
 			const float spikeThreshold = 0.01f;
 			const float gravityThreshold = 0.1f;
@@ -246,11 +233,6 @@ namespace ObjectTracker
 			printData("accel", accelData);
 			printData("displace", displacement);*/
 			//mag data
-			Vector3 magData;
-			magData.X = d.mx;
-			magData.Y = d.my;
-			magData.Z = d.mz;
-
 			float ang = gyroData.Length * ((float)e.Time);
 			Vector3 axis = Vector3.Normalize(gyroData);
 
@@ -273,8 +255,20 @@ namespace ObjectTracker
 		  //  printData("accel", accelData);
 		  //  Console.WriteLine(accelData.Length);
 		  //  printData("mag", magData);
-		  //  printData("gyro off", gyroOff);
-			index++;
+            //  printData("gyro off", gyroOff);
+
+            Vector3 gravityCorrect = gravity * Vector3.Normalize(rotation.ToAxisAngle().Xyz);
+           // accelData += gravityCorrect;
+
+            //printData("accel", accelData);
+          // position = (0.5f * accelData + 1.5f * pastAccels.Prev() + 2 * (pastAccels.Sum - pastAccels.Prev())) * 0.5f * (float)e.Time * (float)e.Time + prevPosition;
+        //   position *= 0.7f;
+            pastAccels.Add(accelData);
+            prevPosition = position;
+            //printData("position", position);
+            //printData("accel", accelData);
+	
+            index++;
 		}
 
 		Vector3 CalculateTiltCorrection(Vector3 current, Vector3 estimate)
