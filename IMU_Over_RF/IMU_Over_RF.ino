@@ -34,7 +34,7 @@ const float GRAVITY = 9.806;
 const float GAIN = 0.05;
 const float TOLERANCE = 0.00001;
 
-const float MILLIS = 0.001;
+const float MILLIS = 0.01;
 
 // class default I2C address is 0x53
 // specific I2C addresses may be passed as a parameter here
