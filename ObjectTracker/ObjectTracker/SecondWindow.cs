@@ -145,6 +145,8 @@ namespace ObjectTracker
 			Console.WriteLine(d.q);
 			Console.WriteLine(d.a);
 			Console.WriteLine(d.m);
+			Console.WriteLine(d.time);
+			Console.WriteLine(d.f1 + ", " + d.f2 + ", " + d.f3 + ", " + d.f4);
 		}
 
 		protected override void OnRenderFrame(FrameEventArgs e)
@@ -210,7 +212,7 @@ namespace ObjectTracker
 			public Vector3 a;
 			public Vector3 m;
 			public short f1, f2, f3, f4;
-			public float p0, p1, p2;
+			public float time, p1, p2;
 			public int check;
 		}
 	}

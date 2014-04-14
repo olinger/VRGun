@@ -147,6 +147,7 @@ void loop()
     packetCount = 1337;
     // actually send the packet
     n = RawHID.send(buffer, 2);
+    //delay(2);
     //digitalWrite(13, HIGH);
   //}
   
