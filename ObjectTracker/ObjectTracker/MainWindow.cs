@@ -172,6 +172,9 @@ namespace ObjectTracker
 		{
 			base.OnUpdateFrame(e);
 
+			if (Keyboard[OpenTK.Input.Key.Escape])
+				Exit();
+
 			int result = 0;
 			fixed (Data* dp = &d)
 			{
