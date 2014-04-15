@@ -18,11 +18,6 @@
 #include "HMC5883L.h"
 #include "ITG3200.h"
 
-//RF24 stuff
-#include <SPI.h>
-#include "nRF24L01.h"
-#include "RF24.h"
-
 // class default I2C address is 0x53
 // specific I2C addresses may be passed as a parameter here
 // ALT low = 0x53 (default for SparkFun 6DOF board)
@@ -45,6 +40,12 @@ int16_t mx, my, mz;
 ITG3200 gyro;
 
 int16_t gx, gy, gz;
+
+elapsedMicros e;
+const float US_2_S = 0.000001;
+
+union float2bytes { float f; char b[sizeof(float)]; };
+float2bytes f2b;
 
 int asdf;
 
@@ -93,11 +94,12 @@ void setup() {
 
 // RawHID packets are always 64 bytes
 byte buffer[64];
-elapsedMillis msUntilNextSend;
 unsigned int packetCount = 0;
 int n;
 void loop() 
-{    
+{
+  float time = e * US_2_S;
+  e = 0;
   //if (msUntilNextSend > 100)
   //{
     //msUntilNextSend = 0;
@@ -137,8 +139,13 @@ void loop()
     buffer[17] = highByte(gy);
     buffer[18] = lowByte(gz);
     buffer[19] = highByte(gz);
+    f2b.f = time;
+    buffer[20] = f2b.b[0];
+    buffer[21] = f2b.b[1];
+    buffer[22] = f2b.b[2];
+    buffer[23] = f2b.b[3];
     // fill the rest with zeros
-    for (int i=20; i<64; i++) {
+    for (int i=24; i<64; i++) {
       buffer[i] = 0;
     }
     // and put a count of packets sent at the end
@@ -146,7 +153,7 @@ void loop()
     buffer[63] = highByte(packetCount);
     packetCount = 1337;
     // actually send the packet
-    n = RawHID.send(buffer, 2);
+    n = RawHID.send(buffer, 1);
     //delay(2);
     //digitalWrite(13, HIGH);
   //}

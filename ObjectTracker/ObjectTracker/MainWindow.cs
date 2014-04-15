@@ -22,6 +22,7 @@ namespace ObjectTracker
 		private bool tmpMoveUp;
 
 		private int boxVbo, boxIbo;
+		private int gunVbo, gunNVbo, gunNumVerts;
 
 		const float gyroScaleDiv = 14.375f;
 		const float deg2rad = MathHelper.Pi / 180f;
@@ -103,13 +104,29 @@ namespace ObjectTracker
 
 			boxVbo = GL.GenBuffer();
 			GL.BindBuffer(BufferTarget.ArrayBuffer, boxVbo);
-			GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(boxVerts.Length * 4), boxVerts, BufferUsageHint.StaticDraw);
+			GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(boxVerts.Length * sizeof(float)), boxVerts, BufferUsageHint.StaticDraw);
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 
 			boxIbo = GL.GenBuffer();
 			GL.BindBuffer(BufferTarget.ElementArrayBuffer, boxIbo);
 			GL.BufferData(BufferTarget.ElementArrayBuffer, (IntPtr)boxInds.Length, boxInds, BufferUsageHint.StaticDraw);
 			GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+
+			ObjModel gunObj = new ObjModel("gun.obj");
+
+			Vector3[] gunVerts = gunObj.GetVertices();
+			Vector3[] gunNorms = gunObj.GetNormals();
+
+			gunVbo = GL.GenBuffer();
+			GL.BindBuffer(BufferTarget.ArrayBuffer, gunVbo);
+			GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(gunVerts.Length * 3 * sizeof(float)), gunVerts, BufferUsageHint.StaticDraw);
+
+			gunNVbo = GL.GenBuffer();
+			GL.BindBuffer(BufferTarget.ArrayBuffer, gunNVbo);
+			GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(gunNorms.Length * 3 * sizeof(float)), gunNorms, BufferUsageHint.StaticDraw);
+			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+
+			gunNumVerts = gunVerts.Length;
 
 			GL.Enable(EnableCap.DepthTest);
 			GL.DepthMask(true);
@@ -158,7 +175,7 @@ namespace ObjectTracker
 			int result = 0;
 			fixed (Data* dp = &d)
 			{
-				result = RawHidDevice.rawhid_recv(0, dp, 64, 2);
+				result = RawHidDevice.rawhid_recv(0, dp, 64, 1);
 				Vector3 tmp = new Vector3(d.rx, d.ry, d.rz);
 			}
 
@@ -244,7 +261,7 @@ namespace ObjectTracker
 
 			//rotation = Quaternion.FromAxisAngle(Vector3.UnitY, heading);
 
-			
+			Console.WriteLine(d.time);
 
 			//velocity += accelData * (float)e.Time;
 			//position += velocity * (float)e.Time;
@@ -299,20 +316,35 @@ namespace ObjectTracker
 			GL.Enable(EnableCap.Light0);
 			GL.Light(LightName.Light0, LightParameter.Position, new Vector4(0f, 1, 0f, 0));
 
-			GL.BindBuffer(BufferTarget.ArrayBuffer, boxVbo);
+			//draw box
+			/*GL.BindBuffer(BufferTarget.ArrayBuffer, boxVbo);
 			GL.VertexPointer(3, VertexPointerType.Float, 6 * 4, 0);
 			GL.NormalPointer(NormalPointerType.Float, 6 * 4, 3 * 4);
 
-			GL.BindBuffer(BufferTarget.ElementArrayBuffer, boxIbo);
+			GL.BindBuffer(BufferTarget.ElementArrayBuffer, boxIbo);*/
+
+			GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+
+			//draw gun
+			GL.BindBuffer(BufferTarget.ArrayBuffer, gunVbo);
+			GL.VertexPointer(3, VertexPointerType.Float, 0, 0);
+
+			GL.BindBuffer(BufferTarget.ArrayBuffer, gunNVbo);
+			GL.NormalPointer(NormalPointerType.Float, 0, 0);
 
 			//camera offset
 			GL.LoadIdentity();
-			GL.Translate(0, 0, -5);
+			GL.Translate(-10, -5, -15);
 
 			Matrix4 transf = Matrix4.CreateFromQuaternion(rotation);
 			transf *= Matrix4.CreateTranslation(position);
 			GL.MultMatrix(ref transf);
-			GL.DrawElements(PrimitiveType.Triangles, boxInds.Length, DrawElementsType.UnsignedByte, 0);
+			
+			//draw box
+			//GL.DrawElements(PrimitiveType.Triangles, boxInds.Length, DrawElementsType.UnsignedByte, 0);
+
+			//draw gun
+			GL.DrawArrays(PrimitiveType.Triangles, 0, gunNumVerts);
 
 			GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
 			GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
@@ -358,7 +390,9 @@ namespace ObjectTracker
 			public short rx;
 			public short ry;
 			public short rz;
-			public long p0, p1, p2, p3, p4;
+			public float time;
+			public int p0;
+			public long p1, p2, p3, p4;
 			public short p5;
 			public short packetCount;
 

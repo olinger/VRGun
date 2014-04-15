@@ -227,6 +227,6 @@ void loop()
     b.f4 = analogRead(20);
     b.time = time;
     b.chk = 1337;
-    n = RawHID.send(&b, 2);
+    n = RawHID.send(&b, 1);
     //delay(1);
 }
